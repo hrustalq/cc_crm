@@ -1,0 +1,5 @@
+**/components/ui/*.tsx
+*.config.ts
+*.config.js
+*.config.cjs
+*.config.mjs

@@ -1,0 +1,45 @@
+# Use an official Node.js runtime as the base image
+FROM node:18-alpine AS base
+
+# Install dependencies only when needed
+FROM base AS deps
+WORKDIR /app
+
+# Install dependencies based on the preferred package manager
+COPY package.json yarn.lock* package-lock.json* pnpm-lock.yaml* ./
+RUN \
+  if [ -f yarn.lock ]; then yarn install; \
+  elif [ -f package-lock.json ]; then npm install; \
+  elif [ -f pnpm-lock.yaml ]; then corepack enable pnpm && pnpm install; \
+  else echo "Lockfile not found." && exit 1; \
+  fi
+
+# Copy Prisma schema
+COPY prisma ./prisma
+
+# Generate Prisma Client
+RUN npx prisma generate
+
+# Copy the remaining files
+COPY . .
+
+# Development build with hot-reloading
+FROM base AS dev
+WORKDIR /app
+
+# Copy node_modules and source code
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+# Install development tools (optional)
+RUN apk add --no-cache bash
+
+# Set environment variables for development
+ENV NODE_ENV=development
+ENV PORT=3000
+
+# Expose the development port
+EXPOSE 3000
+
+# Start the development server with live-reloading
+CMD ["npm", "run", "dev"]
